@@ -134,7 +134,8 @@ analyze({Mod,Fun,Args}=Target, Files, Options) ->
                 {Mins, Secs} = concuerror_util:to_elapsed_time(T1, T2),
                 ?debug("Done in ~wm~.2fs\n", [Mins, Secs]),
                 %% Print analysis summary
-                {Tickets, RunCount, SBlocked, Trans, STrans} = Result,
+                {Tickets, RunCount, SBlocked, Trans, STrans, MaxTree, AvgTree} =
+                    Result,
                 %% StrB =
                 %%     case SBlocked of
                 %%         0 -> " ";
@@ -159,8 +160,9 @@ analyze({Mod,Fun,Args}=Target, Files, Options) ->
                 %% concuerror_log:log(0, "\n\nAnalysis complete. Checked "
                 %%     "~w interleaving(s) (~w transitions)~sin ~s~s:\n",
                 %%     [RunCount, Trans, StrB, Time, MemoryStr]),
-                concuerror_log:log(0, "OUT ~w & ~w & ~w & ~w & ~s & ~s \\\\",
-                                   [RunCount, Trans, SBlocked, STrans, Time, MemoryStr]),
+                concuerror_log:log(0, "OUT ~w & ~w & ~w & ~w & ~w & ~.2f & ~s & ~s \\\\",
+                                   [RunCount, Trans, SBlocked, STrans, MaxTree,
+                                    AvgTree,Time, MemoryStr]),
                 
                 case Tickets =:= [] of
                     true ->
@@ -227,6 +229,9 @@ do_analysis(Target, PreBound, Dpor, Options) ->
           sleep_blocked_count = 0 :: non_neg_integer(),
           total_trans = 0         :: non_neg_integer(),
           sleep_trans = 0         :: non_neg_integer(),
+          trees       = 0         :: non_neg_integer(),
+          tree_size_tot = 0       :: non_neg_integer(),
+          tree_size_max = 0       :: non_neg_integer(),
           show_output  = false    :: boolean(),
           tickets      = []       :: [concuerror_ticket:ticket()],
           trace        = []       :: [trace_state()],
@@ -1176,8 +1181,31 @@ convert_error_info({_Lid, {error, [Kind, Type, Stacktrace]}, _Msgs})->
 %% -----------------------------------------------------------------------------
 
 drop_last_frame(#dpor_state{trace = []} = State) -> State;
-drop_last_frame(#dpor_state{trace = [_|Trace]} = State) ->
-    State#dpor_state{trace = Trace}.
+drop_last_frame(#dpor_state{trace = [Top|Trace],
+                            trees = Trees,
+                            tree_size_tot = TotalTreeSize,
+                            tree_size_max = MaxTreeSize} = State) ->
+    #trace_state{backtrack = Backtrack} = Top,
+    Size = tree_size(Backtrack),
+    NewMaxTreeSize = 
+        case Size > MaxTreeSize of
+            true -> Size;
+            false -> MaxTreeSize
+        end,
+    NewTotalTreeSize = TotalTreeSize + Size,
+    NewTrees = Trees + 1,
+    State#dpor_state{trace = Trace,
+                     trees = NewTrees,
+                     tree_size_tot = NewTotalTreeSize,
+                     tree_size_max = NewMaxTreeSize}.
+
+tree_size(Tree) ->
+    tree_size(Tree, 0).
+
+tree_size([], Acc) ->
+    Acc;
+tree_size([{_,_,Subtree}|Rest], Acc) ->
+    tree_size(Rest, Acc + 1 + tree_size(Subtree)).
 
 finished(#dpor_state{trace = Trace}) ->
     Trace =:= [].
@@ -1197,8 +1225,10 @@ dpor_return(State) ->
     SBlocked = State#dpor_state.sleep_blocked_count,
     Transitions = State#dpor_state.total_trans,
     STransitions = State#dpor_state.sleep_trans,
+    MaxTree = State#dpor_state.tree_size_max,
+    AvgTree = State#dpor_state.tree_size_tot / State#dpor_state.trees,
     Tickets = State#dpor_state.tickets,
-    {Tickets, RunCnt, SBlocked, Transitions, STransitions}.
+    {Tickets, RunCnt, SBlocked, Transitions, STransitions, MaxTree, AvgTree}.
 
 %% =============================================================================
 %% ENGINE (manipulation of the Erlang processes under the scheduler)
