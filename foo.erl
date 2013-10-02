@@ -3,4 +3,10 @@
 -export([foo/0]).
 
 foo() ->
-    ok.
+    a() == id(a).
+
+a() ->
+    a.
+
+id(X) ->
+    X.

@@ -1,14 +1,7 @@
 -module(my_test).
 
--export([test/1]).
+-export([test/0]).
 
-test(small) ->
-    foo_test();
-test(large) ->
-    foobar_test().
-
-foo_test() ->
-    dialyzer:run([{files, ["/home/stavros/git/Concuerror/foo.erl"]}, {from, src_code}]).
-
-foobar_test() ->
-    dialyzer:run([{files, ["/home/stavros/git/Concuerror/foobar.erl"]}, {from, src_code}]).
+test() ->
+    dialyzer:run([{files, ["/home/stavros/git/Concuerror/foo.beam"]},
+                  {analysis_type, plt_build}]).
