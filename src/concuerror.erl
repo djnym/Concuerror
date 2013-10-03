@@ -226,11 +226,11 @@ parse([{Opt, Param} | Args], Options) ->
 
         "I" ->
             case Param of
-                [Par] ->
+                [] -> wrongArgument('number', Opt);
+                Par ->
                     NewOptions = keyAppend('include', 1,
-                        Options, [Par]),
-                    parse(Args, NewOptions);
-                _Other -> wrongArgument('number', Opt)
+                        Options, Par),
+                    parse(Args, NewOptions)
             end;
         "I" ++ Include ->
             case Param of
