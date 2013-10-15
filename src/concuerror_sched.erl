@@ -330,7 +330,7 @@ select_from_backtrack(#dpor_state{must_replay = MustReplay, trace = Trace,
         none ->
             ?debug("Backtrack set explored\n",[]),
             none;
-        {true, SelectedLid} ->
+        {true, SelectedLid, NewBacktrack} ->
             UpdState =
                 case MustReplay of
                     true -> replay_trace(State);
@@ -341,20 +341,23 @@ select_from_backtrack(#dpor_state{must_replay = MustReplay, trace = Trace,
                 dict:fetch(SelectedLid, NewTraceTop#trace_state.nexts),
             NewDone = ordsets:add_element(SelectedLid, Done),
             FinalTraceTop =
-                NewTraceTop#trace_state{done = NewDone},
+                NewTraceTop#trace_state{
+                  backtrack = NewBacktrack,
+                  done = NewDone
+                 },
             FinalState = UpdState#dpor_state{trace = [FinalTraceTop|RestTrace]},
             {ok, Instruction, FinalState}
     end.
 
 pick_from_backtrack(true, _Backtrack, _Sleepers) -> none;
 pick_from_backtrack(_BoundFlag, Backtrack, Sleepers) ->
-    pick_from_backtrack(Backtrack, Sleepers).
+    pick_from_backtrack_aux(Backtrack, Sleepers, []).
 
-pick_from_backtrack([], _) -> none;
-pick_from_backtrack([{B, _, _}|Rest], Done) ->
+pick_from_backtrack_aux([], _, _) -> none;
+pick_from_backtrack_aux([{B, Tr, _}|Rest] = BT, Done, Acc) ->
     case ordsets:is_element(B, Done) of
-        true  -> pick_from_backtrack(Rest, Done);
-        false -> {true, B}
+        true  -> pick_from_backtrack_aux(Rest, Done, [{B,Tr,[]}|Acc]);
+        false -> {true, B, lists:reverse(Acc, BT)}
     end.
 
 %% -----------------------------------------------------------------------------
@@ -611,6 +614,7 @@ race_check(#dpor_state{preemption_bound = Bound, trace = Trace,
                 true -> State;
                 false ->
                     NewTrace = race_check(Trace, Bound, Flavor),
+                    sample_wakeup_tree(State, NewTrace),
                     State#dpor_state{trace = NewTrace}
             end
     end.
@@ -743,6 +747,56 @@ add_all_backtracks_trace(Transition, Lid, ClockVector, PreBound, Flavor,
         {done, NewPreSI} ->
             lists:reverse([StateI|Acc], [NewPreSI|Rest])
     end.
+
+%% -define(SAMPLE_WAKEUP_SIZE, true).
+
+-ifndef(SAMPLE_WAKEUP_SIZE).
+
+sample_wakeup_tree(_, _) -> ok.
+
+-else.
+
+sample_wakeup_tree(#dpor_state{run_count = RC}, NewTrace) ->
+    case (RC rem 2500) =/= 0 of
+        true -> ok;
+        false ->
+            io:format("\nSampling wakeup tree sizes after ~p interleavings:\n",[RC]),
+            sample_wakeup_tree_aux(NewTrace, 0)
+    end.
+
+sample_wakeup_tree_aux([], Peak) ->
+    io:format("~p (Peak)\n", [Peak]);
+sample_wakeup_tree_aux([#trace_state{i=I, backtrack=Backtrack}|Rest], Peak) ->
+    io:format("~p:\n",[I]),
+    Total = wakeup_size(Backtrack),
+    io:format("~p (Total)\n",[Total]),
+    sample_wakeup_tree_aux(Rest, max(Peak, Total)).
+
+wakeup_size(B) ->
+    wakeup_size(B, 0, "", false).
+
+wakeup_size([], Acc, Prefix, Horizontal) ->
+    case Horizontal of
+        true -> Acc;
+        false ->
+            io:format("~s~p\n", [Prefix, Acc]),
+            Acc
+    end;
+wakeup_size([{_,_,Deeper}|Rest]=C, Acc, Prefix, Horizontal) ->
+    case Horizontal of
+        true ->
+            Add=wakeup_size(Deeper, 1, " "++Prefix, false),
+            wakeup_size(Rest, Acc+Add, Prefix, true);
+        false ->
+            case Rest =:= [] of
+                true -> wakeup_size(Deeper, Acc+1, Prefix, false);
+                false ->
+                    io:format("~s~p\n",[Prefix, Acc]),
+                    Acc + wakeup_size(C, 0, Prefix, true)
+            end
+    end.
+
+-endif. % SAMPLE_WAKEUP_SIZE
 
 %% -----------------
 %% For optimal DPOR:
