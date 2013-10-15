@@ -1,0 +1,56 @@
+2013-10-04
+
+Where:
+pc-staar721 (heavy-ish load, multiple instances running)
+
+================================================================================
+What:
+./conc_dia.sh -p inf (with a modified Dialyzer where spawn_link -> spawn)
+--------------------------------------------------------------------------------
+optimal:
+Analysis complete.
+Checked 602880 interleaving(s) (299631360 transitions) in 1456m53.51s (using 331.37MB):
+No errors found.
+--------------------------------------------------------------------------------
+source:
+Analysis complete.
+Checked 602880 interleaving(s) (299631360 transitions) in 1108m45.18s (using 327.17MB):
+No errors found.
+--------------------------------------------------------------------------------
+classic:
+INTERRUPTED
+Checked 1366171 interleaving(s) (642567784 transitions) (encountered 829674 sleep-set blocked traces (375929272 transitions)) in 1590m22.10s (using 325.02MB):
+No errors found.
+================================================================================
+What:
+./conc_hipe.sh -p inf
+--------------------------------------------------------------------------------
+classic:
+INTERRUPTED
+Checked 993651 interleaving(s) (490104982 transitions) (encountered 642988 sleep-set blocked traces (316176630 transitions)) in 1349m17.10s (using 516.42MB)
+--------------------------------------------------------------------------------
+optimal:
+
+First try:
+CRASHED
+[ 558612 checked interleavings, 0 sleep set blocked, 0 errors in 1262m32s ]
+Crash dump was written to: erl_crash.dump
+eheap_alloc: Cannot allocate 5668310376 bytes of memory (of type "heap").
+../Concuerror/concuerror_mem: line 18: 10693 Aborted                 erl +S1 +Bi -instr -smp enable -noinput -sname $Name -cookie $Cookie -pa /home/stavros/git/Concuerror/ebin -run concuerror cli -run init stop -- "$@"
+
+Rerun (with lower load):
+CRASHED
+[ 558614 checked interleavings, 0 sleep set blocked, 0 errors in 855m03s ]
+Crash dump was written to: erl_crash.dump
+eheap_alloc: Cannot allocate 5668310376 bytes of memory (of type "heap").
+../Concuerror/concuerror_mem: line 18: 19169 Aborted                 erl +S1 +Bi -instr -smp enable -noinput -sname $Name -cookie $Cookie -pa /home/stavros/git/Concuerror/ebin -run concuerror cli -run init stop -- "$@"
+
+Rerun (after clean deep done wakeup):
+INTERRUPTED
+[ 1095476 checked interleavings, 0 sleep set blocked, 0 errors in 888m47s ]
+
+--------------------------------------------------------------------------------
+source:
+INTERRUPTED
+Analysis complete. Checked 15735110 interleaving(s) (7804614064 transitions) in 15764m58.57s (using 515.45MB):
+================================================================================
