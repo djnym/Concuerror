@@ -11,7 +11,7 @@ $CONC_PATH/concuerror_mem -t my_hipe_test test \
              beam_lib cerl cerl_trees cerl_closurean erl_bifs erl_bif_types erl_types \
              io io_lib file beam_disasm erl_internal gb_sets code_server \
              hipe_amd64_main hipe_amd64_liveness hipe_amd64_defuse \
-             hipe_amd64_ra_postconditions\
+             hipe_amd64_ra_postconditions hipe_bifs\
     -pa . \
     \
     -I $OTP_PATH/lib/kernel/include \
