@@ -74,7 +74,7 @@ getopt: submodules
 meck: submodules
 	cd deps/meck \
 		&& cp rebar.config rebar.config.bak \
-		&& sed -i 's/warnings_as_errors, //' rebar.config \
+		&& sed -i'.bk' 's/warnings_as_errors, //' rebar.config \
 		&& make get-deps \
 		&& make compile \
 		&& mv rebar.config.bak rebar.config
